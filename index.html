@@ -1,0 +1,759 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Les temps de l'indicatif — Mini-projet (AULA DEFINITIVA · CALM)</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    /* =====================
+       PALETA SUAU + CÀLIDA
+       (contrast alt però agradable)
+    ===================== */
+    :root{
+      --ink:#3d3a33;          /* text principal (gris càlid fosc) */
+      --muted:#6b6256;        /* text secundari */
+
+      --sage:#7b8f7a;         /* verd sàlvia */
+      --sage-2:#a8b9a3;       /* verd clar */
+
+      --sand:#e6c08a;         /* sorra/mel */
+      --peach:#f3dfcf;        /* préssec molt suau */
+
+      --cream:#fdf9f3;        /* crema de fons */
+      --paper:#ffffff;        /* targetes */
+
+      --line:#e7dfd3;         /* vores */
+      --good:#7ba38a;         /* confirmació */
+      --warn:#e6b980;         /* avís */
+      --bad:#d9817d;          /* error suau */
+    }
+
+    *{box-sizing:border-box;}
+    body{
+      font-family:'Segoe UI',Tahoma,Verdana,sans-serif;
+      margin:0;
+      background:linear-gradient(135deg,var(--peach) 0%, var(--cream) 60%);
+      color:var(--ink);
+      min-height:100vh;
+    }
+
+    /* =====================
+       BAR SUPER CLARA
+    ===================== */
+    .bar{position:sticky;top:0;z-index:999;background:linear-gradient(90deg,var(--sage), #6f876e);color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.12);} 
+    .barin{max-width:1040px;margin:0 auto;padding:12px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;}
+    .brand{display:flex;flex-direction:column;gap:2px;min-width:260px;}
+    .brand b{font-size:1.05rem;letter-spacing:.2px;}
+    .brand small{opacity:.92;line-height:1.25;}
+
+    .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:flex-end;}
+    .pill{background:rgba(255,255,255,.16);padding:8px 12px;border-radius:999px;font-weight:900;}
+
+    .btn{border:none;cursor:pointer;border-radius:12px;font-weight:900;padding:10px 14px;display:inline-flex;align-items:center;gap:8px;user-select:none;transition:transform .05s, filter .15s;}
+    .btn:active{transform:translateY(1px);} 
+    .btn:hover{filter:brightness(1.04);} 
+
+    .btn-open{background:rgba(255,255,255,.14);color:#fff;border:2px solid rgba(255,255,255,.22);} 
+    .btn-save{background:var(--sand);color:var(--ink);} 
+    .btn-reset{background:rgba(255,255,255,.08);color:#fff;border:2px solid rgba(255,255,255,.16);} 
+
+    /* =====================
+       LAYOUT
+    ===================== */
+    .container{max-width:1040px;margin:0 auto;padding:18px 16px;}
+
+    .card{background:var(--paper);border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.06);padding:16px 18px;margin-bottom:14px;border:1px solid var(--line);}
+    .card.notice{background:linear-gradient(135deg,#fff7ed, #ffffff);border-left:7px solid var(--sand);} 
+    .card.notice b{color:var(--ink);} 
+    .notice-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+    .notice-step{background:#fff; border:1px solid var(--line); border-radius:12px; padding:12px 12px;}
+    .notice-step .tag{display:inline-block;background:var(--sand);color:var(--ink);padding:2px 10px;border-radius:999px;font-weight:900;font-size:.82rem;margin-bottom:8px;}
+    .notice-step p{margin:0;color:var(--muted);line-height:1.35;}
+
+    .identity{display:flex;gap:12px;flex-wrap:wrap;align-items:end;}
+    .field{flex:1;min-width:200px;}
+    label{display:block;font-weight:900;margin-bottom:6px;font-size:.9rem;color:var(--muted);}
+    input[type="text"]{width:100%;padding:10px 12px;border:2px solid var(--line);border-radius:12px;font-size:1rem;background:#fffdf9;color:var(--ink);} 
+    input[type="text"]:focus{outline:none;border-color:var(--sage-2);} 
+
+    .progress-wrap{background:var(--paper);border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.06);padding:12px 14px;margin-bottom:14px;border:1px solid var(--line);} 
+    .progress-row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;}
+    .progress-bar{height:10px;background:#efe7dc;border-radius:8px;overflow:hidden;flex:1;min-width:220px;}
+    .progress-fill{height:100%;background:linear-gradient(90deg,var(--good),var(--sand));transition:width .35s;width:0%;}
+    .progress-text{font-weight:900;color:var(--ink);} 
+
+    .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0;}
+    .tab-btn{flex:1;min-width:165px;padding:12px 16px;background:#efe7dc;color:var(--muted);border:none;border-radius:14px 14px 0 0;cursor:pointer;font-size:.98rem;font-weight:900;transition:all .2s;}
+    .tab-btn.active{background:var(--paper);color:var(--ink);box-shadow:0 -3px 8px rgba(0,0,0,.04);} 
+    .tab-btn:not(.active):hover{background:#e6ddcf;} 
+    .tab-btn.done{border-bottom:3px solid var(--good);} 
+    .tab-btn.recap-tab{background:#fff3e3;color:#7a5a2b;font-style:italic;} 
+    .tab-btn.recap-tab.active{background:var(--paper);color:var(--ink);} 
+
+    .panel{display:none;background:var(--paper);padding:24px;border-radius:0 14px 14px 14px;box-shadow:0 4px 16px rgba(0,0,0,.06);border:1px solid var(--line);} 
+    .panel.active{display:block;} 
+
+    h2.section{margin:0 0 14px 0;color:var(--ink);border-bottom:3px solid var(--sand);padding-bottom:8px;} 
+    h3{color:#5a6a55;margin-top:20px;} 
+
+    .theorie{background:#fbf7f1;border-left:5px solid var(--sage-2);padding:14px 18px;border-radius:12px;margin-bottom:18px;line-height:1.6;color:var(--muted);} 
+
+    .exo{margin:18px 0;padding:14px;background:#fffdf7;border:1px solid #f0dfc3;border-radius:14px;} 
+    .exo-title{font-weight:900;color:var(--ink);margin-bottom:10px;} 
+    .consigne{color:var(--muted);font-style:italic;margin-bottom:12px;font-size:.95rem;} 
+
+    /* Phrases (ordre) */
+    .phrase-exo{margin-bottom:16px;padding:12px;background:#fff;border-radius:12px;border:1px solid var(--line);} 
+    .mots-pool{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;} 
+    .mot-btn{padding:6px 12px;background:var(--sage-2);color:#273022;border:none;border-radius:999px;cursor:pointer;font-size:.95rem;font-weight:800;} 
+    .mot-btn:hover{filter:brightness(1.02);} 
+    .reponse-zone{min-height:44px;padding:10px;background:#f3fbf6;border:2px dashed var(--good);border-radius:12px;display:flex;flex-wrap:wrap;gap:6px;} 
+    .reponse-zone .mot-btn{background:var(--good);color:#fff;} 
+
+    /* Conjugaisons */
+    .conj-line{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;} 
+    .conj-line label{flex:1;min-width:240px;display:flex;align-items:center;gap:8px;color:var(--ink);}
+    .conj-line label span{color:var(--ink);} /* ← fixa el problema de text blanc */
+    .conj-line label b{color:#2f3a2d;}
+
+    .conj-line input{padding:8px 12px;border:2px solid var(--line);border-radius:12px;font-size:.95rem;min-width:170px;background:#fffdf9;color:var(--ink);} 
+    .conj-line input:focus{outline:none;border-color:var(--sage-2);} 
+    .conj-line .feedback{font-size:1.2rem;min-width:32px;font-weight:900;} 
+
+    .speak-btn{background:transparent;border:1px solid var(--sage-2);color:#2f3a2d;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:.9rem;padding:0;display:inline-flex;align-items:center;justify-content:center;} 
+    .speak-btn:hover{background:var(--sage-2);}
+
+    textarea{width:100%;min-height:120px;padding:12px;border:2px solid var(--line);border-radius:14px;font-size:1rem;font-family:inherit;resize:vertical;background:#fffdf9;color:var(--ink);} 
+    textarea:focus{outline:none;border-color:var(--sage-2);} 
+
+    .word-count{font-size:.85rem;color:var(--muted);margin-top:4px;} 
+
+    .actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;align-items:center;} 
+    .done-btn{background:var(--good);color:#fff;border:none;padding:12px 22px;border-radius:14px;font-size:1.02rem;font-weight:900;cursor:pointer;} 
+    .done-btn:hover{filter:brightness(1.03);} 
+    .hint-btn{background:#f3f0ff;color:#3f3a7a;border:2px solid #dad4ff;padding:10px 16px;border-radius:14px;font-size:.95rem;font-weight:900;cursor:pointer;} 
+    .hint-btn:hover:not(:disabled){background:#e7e2ff;} 
+    .hint-btn:disabled{opacity:.6;cursor:not-allowed;} 
+
+    .indice-box{display:none;margin-top:14px;padding:12px 16px;background:#fff4e6;border-left:4px solid var(--sand);border-radius:12px;color:#6e4c20;font-size:.95rem;line-height:1.55;} 
+    .indice-box.show{display:block;} 
+
+    .resultat{margin-top:14px;padding:12px 16px;border-radius:12px;font-weight:900;display:none;} 
+    .resultat.success{background:#e8f6ee;color:#1f5b3d;border:1px solid #cfead9;display:block;} 
+    .resultat.todo{background:#fff4e6;color:#6e4c20;border:1px solid #f1d2a8;display:block;} 
+
+    .pdf-section{background:linear-gradient(135deg,var(--sage),#6f876e);color:#fff;padding:22px;border-radius:16px;margin-top:18px;text-align:center;display:none;} 
+    .pdf-section.show{display:block;} 
+    .pdf-btn{background:var(--sand);color:var(--ink);border:none;padding:14px 24px;border-radius:16px;font-size:1.1rem;font-weight:900;cursor:pointer;margin-top:10px;box-shadow:0 4px 12px rgba(0,0,0,.18);} 
+
+    .toast{position:fixed;top:80px;left:50%;transform:translateX(-50%) translateY(-20px);background:#2f3a2d;color:#fff;padding:12px 18px;border-radius:30px;box-shadow:0 6px 20px rgba(0,0,0,.22);font-weight:900;opacity:0;transition:all .3s;z-index:10000;pointer-events:none;} 
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0);} 
+    .toast.success{background:var(--good);} 
+    .toast.warn{background:var(--warn);color:var(--ink);} 
+
+    @media (max-width:720px){
+      .notice-grid{grid-template-columns:1fr;}
+    }
+    @media print{ .bar{display:none;} }
+  </style>
+</head>
+<body>
+  <div id="toast" class="toast"></div>
+
+  <div class="bar">
+    <div class="barin">
+      <div class="brand">
+        <b>Les temps de l'indicatif — Mini-projet (AULA · CALM)</b>
+        <small>
+          <b>💾 Guardar</b> = descarrega el teu fitxer (.json) · <b>📂 Obrir</b> = continua amb el fitxer
+          <span style="opacity:.95;">· 🔄 Reiniciar (només profe: <b>Alt + P</b>)</span>
+        </small>
+      </div>
+      <div class="controls">
+        <span class="pill" id="donePill">✅ 0/5</span>
+        <label class="btn btn-open" for="importFile">📂 Obrir</label>
+        <button class="btn btn-save" onclick="exportOnly()">💾 Guardar</button>
+        <button id="resetBtn" class="btn btn-reset" onclick="effacerProgres()" style="display:none;">🔄 Reiniciar</button>
+        <input type="file" id="importFile" accept=".json,application/json" style="display:none;" onchange="importStateFromFile(event)">
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <div class="card notice">
+      <b>IMPORTANT — Per no perdre el treball</b>
+      <div class="notice-grid">
+        <div class="notice-step">
+          <div class="tag">🟡 Final de la classe</div>
+          <p>Clica <b>💾 Guardar</b> i <b>guarda el fitxer .json</b> (a Descàrregues o a la teva carpeta).</p>
+        </div>
+        <div class="notice-step">
+          <div class="tag">🟢 El pròxim dia</div>
+          <p>Clica <b>📂 Obrir</b> i selecciona <b>el mateix fitxer .json</b> per continuar exactament on eres.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card identity">
+      <div class="field"><label for="prenom">Prénom</label><input type="text" id="prenom" autocomplete="off" placeholder="Ton prénom"></div>
+      <div class="field"><label for="nom">Nom de famille</label><input type="text" id="nom" autocomplete="off" placeholder="Ton nom"></div>
+      <div class="field"><label for="classe">Classe (optionnel)</label><input type="text" id="classe" autocomplete="off" placeholder="Ex.: 2n ESO"></div>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-row">
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="progress-text" id="progressText">Seccions completades : 0/5</div>
+      </div>
+    </div>
+
+    <div class="tabs" id="tabs"></div>
+
+    <div id="panels"></div>
+
+    <div class="pdf-section" id="pdfSection">
+      <h2 style="margin:0;color:white;border:none;">📄 Export PDF (CALM)</h2>
+      <p style="margin:10px 0 0 0;opacity:.95;">El PDF recull les redaccions i indica quines seccions estan completades (sense nota).</p>
+      <button class="pdf-btn" onclick="genererPDF()">Télécharger le PDF</button>
+    </div>
+  </div>
+
+<script>
+/* ===================== DATA ===================== */
+const DATA = {
+  present:{
+    theorie:`<p>Le <b>présent</b> sert à parler d'une action qui se passe maintenant, d'une habitude ou d'une vérité générale.</p>`,
+    phrases:[
+      {mots:["Je","mange","une pomme","tous les matins"], correct:"Je mange une pomme tous les matins"},
+      {mots:["Nous","habitons","à","Barcelone"], correct:"Nous habitons à Barcelone"},
+      {mots:["Tu","parles","français","très bien"], correct:"Tu parles français très bien"},
+      {mots:["Vous","ne","parlez","pas","anglais"], correct:"Vous ne parlez pas anglais"}
+    ],
+    conj:[
+      {verbe:"parler", pronom:"tu", reponses:["parles"]},
+      {verbe:"finir", pronom:"nous", reponses:["finissons"]},
+      {verbe:"être", pronom:"vous", reponses:["êtes","etes"]},
+      {verbe:"avoir", pronom:"ils", reponses:["ont"]},
+      {verbe:"aller", pronom:"je", reponses:["vais"]}
+    ],
+    redac:{placeholder:"Je m'appelle...", consigne:"Minimum 30 mots."}
+  },
+  imparfait:{
+    theorie:`<p>L'<b>imparfait</b> exprime une habitude, une description ou une action qui dure dans le passé.</p>`,
+    phrases:[
+      {mots:["Quand","j'étais","petit","je","jouais","au parc"], correct:"Quand j'étais petit je jouais au parc"},
+      {mots:["Nous","habitions","dans","une petite maison"], correct:"Nous habitions dans une petite maison"},
+      {mots:["Il","faisait","beau","tous les jours"], correct:"Il faisait beau tous les jours"},
+      {mots:["Je","ne","regardais","pas","la télé"], correct:"Je ne regardais pas la télé"}
+    ],
+    conj:[
+      {verbe:"parler", pronom:"je", reponses:["parlais"]},
+      {verbe:"finir", pronom:"nous", reponses:["finissions"]},
+      {verbe:"être", pronom:"tu", reponses:["étais","etais"]},
+      {verbe:"avoir", pronom:"il", reponses:["avait"]},
+      {verbe:"aller", pronom:"vous", reponses:["alliez"]}
+    ],
+    redac:{placeholder:"Quand j'avais 8 ans...", consigne:"Minimum 30 mots, à l'imparfait."}
+  },
+  passecompose:{
+    theorie:`<p>Le <b>passé composé</b> : auxiliaire (avoir/être) au présent + participe passé.</p>`,
+    phrases:[
+      {mots:["Hier","j'ai","mangé","une pizza"], correct:"Hier j'ai mangé une pizza"},
+      {mots:["Elle","est","allée","au cinéma"], correct:"Elle est allée au cinéma"},
+      {mots:["Nous","avons","fini","nos devoirs"], correct:"Nous avons fini nos devoirs"},
+      {mots:["Tu","n'as","pas","vu","ce film"], correct:"Tu n'as pas vu ce film"}
+    ],
+    conj:[
+      {verbe:"parler", pronom:"je", reponses:["ai parlé","ai parle"]},
+      {verbe:"aller", pronom:"elle", reponses:["est allée","est allee"]},
+      {verbe:"finir", pronom:"nous", reponses:["avons fini"]},
+      {verbe:"être", pronom:"tu", reponses:["as été","as ete"]},
+      {verbe:"avoir", pronom:"ils", reponses:["ont eu"]}
+    ],
+    redac:{placeholder:"Le week-end dernier...", consigne:"Minimum 30 mots, au passé composé."}
+  },
+  futurproche:{
+    theorie:`<p>Le <b>futur proche</b> : verbe <b>aller</b> au présent + infinitif.</p>`,
+    phrases:[
+      {mots:["Je","vais","manger","au restaurant"], correct:"Je vais manger au restaurant"},
+      {mots:["Nous","allons","partir","demain"], correct:"Nous allons partir demain"},
+      {mots:["Elle","va","arriver","bientôt"], correct:"Elle va arriver bientôt"},
+      {mots:["Il","ne","va","pas","pleuvoir"], correct:"Il ne va pas pleuvoir"}
+    ],
+    conj:[
+      {verbe:"parler", pronom:"tu", reponses:["vas parler"]},
+      {verbe:"finir", pronom:"nous", reponses:["allons finir"]},
+      {verbe:"être", pronom:"il", reponses:["va être","va etre"]},
+      {verbe:"avoir", pronom:"je", reponses:["vais avoir"]},
+      {verbe:"faire", pronom:"vous", reponses:["allez faire"]}
+    ],
+    redac:{placeholder:"Ce soir, je vais...", consigne:"Minimum 30 mots, au futur proche."}
+  },
+  futur:{
+    theorie:`<p>Le <b>futur simple</b> : infinitif + terminaisons -ai, -as, -a, -ons, -ez, -ont.</p>`,
+    phrases:[
+      {mots:["Demain","je","partirai","en vacances"], correct:"Demain je partirai en vacances"},
+      {mots:["Nous","mangerons","au restaurant"], correct:"Nous mangerons au restaurant"},
+      {mots:["Tu","seras","heureux"], correct:"Tu seras heureux"},
+      {mots:["Vous","ne","serez","pas","fatigués"], correct:"Vous ne serez pas fatigués"}
+    ],
+    conj:[
+      {verbe:"parler", pronom:"je", reponses:["parlerai"]},
+      {verbe:"finir", pronom:"tu", reponses:["finiras"]},
+      {verbe:"être", pronom:"il", reponses:["sera"]},
+      {verbe:"avoir", pronom:"nous", reponses:["aurons"]},
+      {verbe:"aller", pronom:"vous", reponses:["irez"]}
+    ],
+    redac:{placeholder:"Dans 10 ans...", consigne:"Minimum 30 mots, au futur simple."}
+  }
+};
+const ORDRE=["present","imparfait","passecompose","futurproche","futur"];
+const NOMS={present:"Le présent",imparfait:"L'imparfait",passecompose:"Le passé composé",futurproche:"Le futur proche",futur:"Le futur simple"};
+const STORAGE_KEY='ftps_indicatif_aula_definitiva_calm_v1';
+
+/* ===================== STATE ===================== */
+const etat={identite:{prenom:'',nom:'',classe:''},sections:{},dirty:false};
+ORDRE.forEach(k=>etat.sections[k]={done:false,hintUsed:false,inputs:null,details:null});
+
+/* ===================== TOAST ===================== */
+let toastTimer=null;
+function toast(msg,type=''){
+  const el=document.getElementById('toast');
+  el.textContent=msg;
+  el.className='toast show '+(type||'');
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),2200);
+}
+
+/* ===================== HELPERS ===================== */
+function countWords(s){return (s.trim().match(/\S+/g)||[]).length;}
+function normalize(s){return s.trim().toLowerCase().replace(/[.,;!?]/g,'').replace(/\s+/g,' ');}
+
+/* ===================== INDICES ===================== */
+const INDICES={
+  present:"<b>-ER :</b> -e, -es, -e, -ons, -ez, -ent. <b>-IR :</b> -is, -is, -it, -issons, -issez, -issent.",
+  imparfait:"Radical de <b>nous</b> + -ais, -ais, -ait, -ions, -iez, -aient. Exception : <b>être</b>.",
+  passecompose:"Auxiliaire <b>avoir/être</b> + participe passé (-é, -i…).",
+  futurproche:"<b>Aller</b> au présent + infinitif.",
+  futur:"Infinitif + -ai, -as, -a, -ons, -ez, -ont."
+};
+function utiliserIndice(key){
+  if(etat.sections[key].hintUsed){toast('Indice ja utilitzat.','warn');return;}
+  const box=document.getElementById(`${key}-indice`);
+  if(box){box.innerHTML=`<strong>💡 ${NOMS[key]}</strong><br>${INDICES[key]||''}`;box.classList.add('show');}
+  etat.sections[key].hintUsed=true;
+  const btn=document.querySelector(`[data-hint="${key}"]`);
+  if(btn){btn.disabled=true;btn.textContent='💡 Utilitzat';}
+  markDirtyAndSave();
+}
+
+/* ===================== SPEECH ===================== */
+const CONJUGAISONS={
+  parler:{present:"Je parle. Tu parles. Il parle. Nous parlons. Vous parlez. Ils parlent.",imparfait:"Je parlais. Tu parlais. Il parlait. Nous parlions. Vous parliez. Ils parlaient.",passecompose:"J'ai parlé. Tu as parlé. Il a parlé. Nous avons parlé. Vous avez parlé. Ils ont parlé.",futurproche:"Je vais parler. Tu vas parler. Il va parler. Nous allons parler. Vous allez parler. Ils vont parler.",futur:"Je parlerai. Tu parleras. Il parlera. Nous parlerons. Vous parlerez. Ils parleront."},
+  finir:{present:"Je finis. Tu finis. Il finit. Nous finissons. Vous finissez. Ils finissent.",imparfait:"Je finissais. Tu finissais. Il finissait. Nous finissions. Vous finissiez. Ils finissaient.",passecompose:"J'ai fini. Tu as fini. Il a fini. Nous avons fini. Vous avez fini. Ils ont fini.",futurproche:"Je vais finir. Tu vas finir. Il va finir. Nous allons finir. Vous allez finir. Ils vont finir.",futur:"Je finirai. Tu finiras. Il finira. Nous finirons. Vous finirez. Ils finiront."},
+  être:{present:"Je suis. Tu es. Il est. Nous sommes. Vous êtes. Ils sont.",imparfait:"J'étais. Tu étais. Il était. Nous étions. Vous étiez. Ils étaient.",passecompose:"J'ai été. Tu as été. Il a été. Nous avons été. Vous avez été. Ils ont été.",futurproche:"Je vais être. Tu vas être. Il va être. Nous allons être. Vous allez être. Ils vont être.",futur:"Je serai. Tu seras. Il sera. Nous serons. Vous serez. Ils seront."},
+  avoir:{present:"J'ai. Tu as. Il a. Nous avons. Vous avez. Ils ont.",imparfait:"J'avais. Tu avais. Il avait. Nous avions. Vous aviez. Ils avaient.",passecompose:"J'ai eu. Tu as eu. Il a eu. Nous avons eu. Vous avez eu. Ils ont eu.",futurproche:"Je vais avoir. Tu vas avoir. Il va avoir. Nous allons avoir. Vous allez avoir. Ils vont avoir.",futur:"J'aurai. Tu auras. Il aura. Nous aurons. Vous aurez. Ils auront."},
+  aller:{present:"Je vais. Tu vas. Il va. Nous allons. Vous allez. Ils vont.",imparfait:"J'allais. Tu allais. Il allait. Nous allions. Vous alliez. Ils allaient.",passecompose:"Je suis allé. Tu es allé. Il est allé. Nous sommes allés. Vous êtes allés. Ils sont allés.",futurproche:"Je vais aller. Tu vas aller. Il va aller. Nous allons aller. Vous allez aller. Ils vont aller.",futur:"J'irai. Tu iras. Il ira. Nous irons. Vous irez. Ils iront."},
+  faire:{present:"Je fais. Tu fais. Il fait. Nous faisons. Vous faites. Ils font.",imparfait:"Je faisais. Tu faisais. Il faisait. Nous faisions. Vous faisiez. Ils faisaient.",passecompose:"J'ai fait. Tu as fait. Il a fait. Nous avons fait. Vous avez fait. Ils ont fait.",futurproche:"Je vais faire. Tu vas faire. Il va faire. Nous allons faire. Vous allez faire. Ils vont faire.",futur:"Je ferai. Tu feras. Il fera. Nous ferons. Vous ferez. Ils feront."}
+};
+function speak(text){
+  if(!('speechSynthesis' in window)) return;
+  try{speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text); u.lang='fr-FR'; u.rate=0.9; speechSynthesis.speak(u);}catch(e){}
+}
+function speakTense(verbe, tense){
+  const c=CONJUGAISONS[verbe];
+  speak(c && c[tense] ? c[tense] : verbe);
+}
+
+/* ===================== BUILD UI ===================== */
+function init(){
+  const tabsEl=document.getElementById('tabs');
+  ORDRE.forEach((k,i)=>{
+    const b=document.createElement('button');
+    b.className='tab-btn'+(i===0?' active':'');
+    b.dataset.tab=k;
+    b.textContent=(i+1)+'. '+NOMS[k];
+    b.onclick=()=>switchTab(k);
+    tabsEl.appendChild(b);
+  });
+  const recap=document.createElement('button');
+  recap.className='tab-btn recap-tab';
+  recap.dataset.tab='recap';
+  recap.textContent='📋 Récap';
+  recap.onclick=()=>switchTab('recap');
+  tabsEl.appendChild(recap);
+
+  const panels=document.getElementById('panels');
+  ORDRE.forEach((k,i)=>panels.appendChild(buildPanel(k,i===0)));
+  panels.appendChild(buildRecapPanel());
+
+  ['prenom','nom','classe'].forEach(id=>document.getElementById(id).addEventListener('input', markDirtyAndSaveDebounced));
+  ORDRE.forEach(k=>{
+    document.getElementById(k+'-redac').addEventListener('input', markDirtyAndSaveDebounced);
+    DATA[k].conj.forEach((_,i)=>document.getElementById(`${k}-conj-${i}`).addEventListener('input', markDirtyAndSaveDebounced));
+  });
+
+  const loaded=load();
+  updateProgress();
+  if(loaded) toast('Reprès ✅','success');
+
+  window.addEventListener('beforeunload',(e)=>{save(); if(etat.dirty){e.preventDefault(); e.returnValue='';}});
+
+  // Mode profe (Alt+P)
+  window.addEventListener('keydown',(e)=>{
+    if(e.altKey && !e.ctrlKey && !e.shiftKey && e.key.toLowerCase()==='p'){
+      const btn=document.getElementById('resetBtn');
+      btn.style.display = (btn.style.display==='none'||btn.style.display==='') ? 'inline-flex' : 'none';
+      toast('Mode profe: reiniciar '+(btn.style.display==='none'?'ocult':'visible'),'warn');
+    }
+  });
+}
+
+function buildPanel(key, active){
+  const p=document.createElement('div');
+  p.className='panel'+(active?' active':'');
+  p.dataset.panel=key;
+  p.innerHTML=`
+    <h2 class="section">${ORDRE.indexOf(key)+1}. ${NOMS[key]}</h2>
+    <div class="theorie"><h3>Théorie</h3>${DATA[key].theorie}</div>
+
+    <div class="exo">
+      <div class="exo-title">Exercice 1 — Phrases dans l'ordre</div>
+      <div class="consigne">Clique sur les mots dans l'ordre correct. Pour annuler, reclique sur un mot dans la zone verte.</div>
+      <div id="${key}-phrases"></div>
+    </div>
+
+    <div class="exo">
+      <div class="exo-title">Exercice 2 — Conjugaisons</div>
+      <div class="consigne">Écris la forme correcte (sans le pronom). 🔊 lit la conjugaison au temps de la section.</div>
+      <div id="${key}-conj"></div>
+    </div>
+
+    <div class="exo">
+      <div class="exo-title">Exercice 3 — Rédaction</div>
+      <div class="consigne">${DATA[key].redac.consigne}</div>
+      <textarea id="${key}-redac" placeholder="${DATA[key].redac.placeholder}"></textarea>
+      <div class="word-count" id="${key}-redac-count">0 mots</div>
+    </div>
+
+    <div class="actions">
+      <button class="done-btn" onclick="marquerFait('${key}')">✅ Marcar com a fet</button>
+      <button class="hint-btn" data-hint="${key}" onclick="utiliserIndice('${key}')">💡 Indice (1)</button>
+    </div>
+    <div class="indice-box" id="${key}-indice"></div>
+    <div class="resultat" id="${key}-result"></div>
+  `;
+  buildPhrases(key, p.querySelector('#'+key+'-phrases'));
+  buildConj(key, p.querySelector('#'+key+'-conj'));
+  setupWordCount(key);
+  return p;
+}
+
+function buildRecapPanel(){
+  const p=document.createElement('div');
+  p.className='panel';
+  p.dataset.panel='recap';
+  p.innerHTML=`
+    <h2 class="section">📋 Récapitulatif</h2>
+    <div class="theorie">
+      <p>Fiche de référence (verbes conjugués).</p>
+      <div style="overflow-x:auto;">
+        <table style="min-width:740px;width:100%;border-collapse:collapse;background:white;">
+          <tr><th style="background:#6f876e;color:white;">Temps</th><th style="background:#6f876e;color:white;">Présent</th><th style="background:#6f876e;color:white;">Imparfait</th><th style="background:#6f876e;color:white;">Passé composé</th><th style="background:#6f876e;color:white;">Futur proche</th><th style="background:#6f876e;color:white;">Futur simple</th></tr>
+          <tr><th style="background:#f3fbf6;">PARLER</th><td>parle</td><td>parlais</td><td>ai parlé</td><td>vais parler</td><td>parlerai</td></tr>
+          <tr><th style="background:#f3fbf6;">FINIR</th><td>finis</td><td>finissais</td><td>ai fini</td><td>vais finir</td><td>finirai</td></tr>
+          <tr><th style="background:#f3fbf6;">ÊTRE</th><td>suis</td><td>étais</td><td>ai été</td><td>vais être</td><td>serai</td></tr>
+          <tr><th style="background:#f3fbf6;">AVOIR</th><td>ai</td><td>avais</td><td>ai eu</td><td>vais avoir</td><td>aurai</td></tr>
+          <tr><th style="background:#f3fbf6;">ALLER</th><td>vais</td><td>allais</td><td>suis allé(e)</td><td>vais aller</td><td>irai</td></tr>
+        </table>
+      </div>
+    </div>
+  `;
+  return p;
+}
+
+function switchTab(key){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===key));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active', p.dataset.panel===key));
+}
+
+/* ===================== EX1 ===================== */
+function buildPhrases(key, container){
+  DATA[key].phrases.forEach((p, idx)=>{
+    const div=document.createElement('div');
+    div.className='phrase-exo';
+    div.innerHTML=`
+      <div style="margin-bottom:6px;font-weight:900;">Phrase ${idx+1} :</div>
+      <div class="mots-pool" id="${key}-pool-${idx}"></div>
+      <div style="font-size:.85rem;color:var(--muted);margin:6px 0 2px 0;">Ta réponse :</div>
+      <div class="reponse-zone" id="${key}-zone-${idx}"></div>
+    `;
+    container.appendChild(div);
+    const pool=div.querySelector(`#${key}-pool-${idx}`);
+    const zone=div.querySelector(`#${key}-zone-${idx}`);
+    [...p.mots].sort(()=>Math.random()-0.5).forEach(word=>{
+      const b=document.createElement('button');
+      b.className='mot-btn';
+      b.textContent=word;
+      b.onclick=()=>{ zone.appendChild(b); b.onclick=()=>{ pool.appendChild(b); b.onclick=()=>{ zone.appendChild(b); b.onclick=()=>{ pool.appendChild(b); b.onclick=()=>{}; }; markDirtyAndSaveDebounced(); }; markDirtyAndSaveDebounced(); }; markDirtyAndSaveDebounced(); };
+      pool.appendChild(b);
+    });
+  });
+}
+
+/* ===================== EX2 ===================== */
+function buildConj(key, container){
+  DATA[key].conj.forEach((c, idx)=>{
+    const div=document.createElement('div');
+    div.className='conj-line';
+    div.innerHTML=`
+      <label>
+        <button type="button" class="speak-btn" title="Écouter">🔊</button>
+        <span><b>${c.verbe.toUpperCase()}</b> — ${c.pronom} <span style="color:var(--muted);">__________</span></span>
+      </label>
+      <input type="text" id="${key}-conj-${idx}" autocomplete="off" placeholder="..."/>
+      <span class="feedback" id="${key}-conj-fb-${idx}"></span>
+    `;
+    container.appendChild(div);
+    div.querySelector('.speak-btn').onclick=(e)=>{e.preventDefault(); speakTense(c.verbe, key);};
+  });
+}
+
+/* ===================== WORD COUNT ===================== */
+function setupWordCount(key){
+  const ta=document.getElementById(key+'-redac');
+  const counter=document.getElementById(key+'-redac-count');
+  ta.addEventListener('input', ()=>{
+    const n=countWords(ta.value);
+    counter.textContent = n + ' mot' + (n===1?'':'s') + (n>=30 ? ' ✓' : ' (min. 30)');
+    counter.style.color = n>=30 ? 'var(--good)' : 'var(--muted)';
+  });
+}
+
+/* ===================== CALM DONE CHECK ===================== */
+function marquerFait(key){
+  const report=verifierSection(key);
+  const resEl=document.getElementById(key+'-result');
+  if(report.ok){
+    etat.sections[key].done=true;
+    etat.sections[key].details=report.details;
+    resEl.className='resultat success';
+    resEl.innerHTML='✅ Secció completada. (Recorda: 💾 Guardar al final)';
+    document.querySelector(`.tab-btn[data-tab="${key}"]`)?.classList.add('done');
+    toast('Secció feta ✅','success');
+    if(ORDRE.every(k=>etat.sections[k].done)){
+      document.getElementById('pdfSection').classList.add('show');
+      toast('Tot completat ✅','success');
+    }
+  } else {
+    resEl.className='resultat todo';
+    resEl.innerHTML='🧩 Encara falta:<br>' + report.todo.map(t=>'• '+t).join('<br>');
+    toast('Encara falta una mica…','warn');
+  }
+  updateProgress();
+  markDirtyAndSave();
+  resEl.scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+function verifierSection(key){
+  const data=DATA[key];
+  const todo=[];
+  const details={phrases:[], conj:[], redac:null};
+  let badP=0;
+  data.phrases.forEach((p, idx)=>{
+    const zone=document.getElementById(`${key}-zone-${idx}`);
+    const user=zone ? [...zone.querySelectorAll('.mot-btn')].map(b=>b.textContent).join(' ') : '';
+    const ok=normalize(user)===normalize(p.correct);
+    if(zone){zone.style.borderColor= ok?'var(--good)':'var(--bad)'; zone.style.background= ok?'#e8f6ee':'#fdeceb';}
+    if(!ok) badP++;
+    details.phrases.push({attendu:p.correct, donne:user, ok});
+  });
+  if(badP>0) todo.push(`Phrases: ${badP} a corregir`);
+
+  let badC=0;
+  data.conj.forEach((c, idx)=>{
+    const inp=document.getElementById(`${key}-conj-${idx}`);
+    const fb=document.getElementById(`${key}-conj-fb-${idx}`);
+    const val=normalize(inp?inp.value:'');
+    const ok=c.reponses.some(r=>normalize(r)===val);
+    if(inp) inp.style.borderColor = ok?'var(--good)':'var(--bad)';
+    if(fb){fb.innerHTML=ok?'✓':'✗'; fb.style.color=ok?'var(--good)':'var(--bad)';}
+    if(!ok) badC++;
+    details.conj.push({verbe:c.verbe, pronom:c.pronom, attendu:c.reponses[0], donne:inp?inp.value:'', ok});
+  });
+  if(badC>0) todo.push(`Conjugacions: ${badC} a corregir`);
+
+  const redac=document.getElementById(key+'-redac');
+  const txt=redac?redac.value.trim():'';
+  const n=countWords(txt);
+  const okR=n>=30;
+  details.redac={texte:txt,mots:n,ok:okR};
+  if(!okR) todo.push(`Redacció: ${n}/30 mots`);
+
+  return {ok: todo.length===0, todo, details};
+}
+
+function updateProgress(){
+  const done=ORDRE.filter(k=>etat.sections[k].done).length;
+  document.getElementById('progressFill').style.width=(done/ORDRE.length*100)+'%';
+  document.getElementById('progressText').textContent=`Seccions completades : ${done}/${ORDRE.length}`;
+  document.getElementById('donePill').textContent=`✅ ${done}/${ORDRE.length}`;
+}
+
+/* ===================== SAVE/LOAD ===================== */
+function captureInputs(key){
+  const sec=etat.sections[key];
+  sec.inputs={phrases:[], conj:[], redac:''};
+  DATA[key].phrases.forEach((_,i)=>{
+    const zone=document.getElementById(`${key}-zone-${i}`);
+    sec.inputs.phrases.push(zone ? [...zone.querySelectorAll('.mot-btn')].map(b=>b.textContent) : []);
+  });
+  sec.inputs.conj=DATA[key].conj.map((_,i)=>document.getElementById(`${key}-conj-${i}`)?.value||'');
+  sec.inputs.redac=document.getElementById(key+'-redac')?.value||'';
+}
+
+function buildStateObject(){
+  ORDRE.forEach(captureInputs);
+  etat.identite.prenom=document.getElementById('prenom').value;
+  etat.identite.nom=document.getElementById('nom').value;
+  etat.identite.classe=document.getElementById('classe').value;
+  const state={version:'aula-definitiva-calm-1', savedAt:new Date().toISOString(), identite:etat.identite, sections:{}};
+  ORDRE.forEach(k=>{const s=etat.sections[k]; state.sections[k]={done:s.done, hintUsed:s.hintUsed, inputs:s.inputs, details:s.details||null};});
+  return state;
+}
+
+function save(){
+  try{localStorage.setItem(STORAGE_KEY, JSON.stringify(buildStateObject())); etat.dirty=false;}catch(e){}
+}
+let saveTimer=null;
+function markDirtyAndSaveDebounced(){
+  etat.dirty=true;
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(save, 450);
+}
+function markDirtyAndSave(){etat.dirty=true; save();}
+
+function exportOnly(){
+  save();
+  const state=buildStateObject();
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const safe=s=>(s||'').replace(/[^a-zA-Z0-9]/g,'_');
+  const stamp=new Date().toISOString().slice(0,10);
+  const filename=`progres_${safe(state.identite.prenom)}_${safe(state.identite.nom)}_${stamp}.json`.replace(/_+/g,'_');
+  const a=document.createElement('a'); a.href=url; a.download=filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  toast('Fitxer guardat ✅', 'success');
+}
+
+function importStateFromFile(event){
+  const file=event.target.files && event.target.files[0];
+  event.target.value='';
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=(e)=>{
+    try{
+      const state=JSON.parse(e.target.result);
+      if(!state || !state.sections || !state.identite){toast('Fitxer no vàlid','warn'); return;}
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      toast('Obert ✅','success');
+      setTimeout(()=>location.reload(), 350);
+    }catch(err){toast('JSON invàlid','warn');}
+  };
+  reader.readAsText(file);
+}
+
+function load(){
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY);
+    if(!raw) return false;
+    const s=JSON.parse(raw);
+    if(s.identite){
+      document.getElementById('prenom').value=s.identite.prenom||'';
+      document.getElementById('nom').value=s.identite.nom||'';
+      document.getElementById('classe').value=s.identite.classe||'';
+      etat.identite=s.identite;
+    }
+    ORDRE.forEach(k=>{
+      const ss=s.sections && s.sections[k];
+      if(!ss) return;
+      etat.sections[k].done=!!ss.done;
+      etat.sections[k].hintUsed=!!ss.hintUsed;
+      etat.sections[k].inputs=ss.inputs||null;
+      etat.sections[k].details=ss.details||null;
+      if(ss.inputs){
+        ss.inputs.phrases?.forEach((words,i)=>{
+          const pool=document.getElementById(`${k}-pool-${i}`);
+          const zone=document.getElementById(`${k}-zone-${i}`);
+          if(pool && zone && Array.isArray(words)){
+            words.forEach(w=>{
+              const btn=[...pool.querySelectorAll('.mot-btn')].find(b=>b.textContent===w);
+              if(btn){ zone.appendChild(btn); }
+            });
+          }
+        });
+        ss.inputs.conj?.forEach((v,i)=>{const inp=document.getElementById(`${k}-conj-${i}`); if(inp) inp.value=v||'';});
+        if(ss.inputs.redac){const r=document.getElementById(`${k}-redac`); if(r){r.value=ss.inputs.redac; r.dispatchEvent(new Event('input'));}}
+      }
+      if(ss.done) document.querySelector(`.tab-btn[data-tab="${k}"]`)?.classList.add('done');
+      if(ss.hintUsed){
+        const hb=document.querySelector(`[data-hint="${k}"]`);
+        if(hb){hb.disabled=true; hb.textContent='💡 Utilitzat';}
+        const box=document.getElementById(`${k}-indice`);
+        if(box){box.innerHTML=`<strong>💡 ${NOMS[k]}</strong><br>${INDICES[k]||''}`; box.classList.add('show');}
+      }
+    });
+    if(ORDRE.every(k=>etat.sections[k].done)) document.getElementById('pdfSection').classList.add('show');
+    etat.dirty=false;
+    return true;
+  }catch(e){return false;}
+}
+
+function effacerProgres(){
+  if(!confirm("Mode profe: reiniciar? S'esborrarà el progrés d'aquest dispositiu.")) return;
+  try{localStorage.removeItem(STORAGE_KEY);}catch(e){}
+  location.reload();
+}
+
+/* ===================== PDF (CALM) ===================== */
+function genererPDF(){
+  const prenom=document.getElementById('prenom').value.trim();
+  const nom=document.getElementById('nom').value.trim();
+  const classe=document.getElementById('classe').value.trim();
+  if(!prenom || !nom){ alert('⚠ Escriu el teu nom i cognom.'); document.getElementById('prenom').focus(); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  const W=210, M=18; let y=M;
+  doc.setFillColor(95,111,82); doc.rect(0,0,W,28,'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(16);
+  doc.text("Les temps de l'indicatif — Mini-projet (CALM)", M, 14);
+  y=38; doc.setTextColor(40,40,40); doc.setFont('helvetica','normal'); doc.setFontSize(11);
+  doc.text(`Élève : ${prenom} ${nom}`, M, y); y+=6;
+  if(classe){ doc.text(`Classe : ${classe}`, M, y); y+=6; }
+  const done=ORDRE.filter(k=>etat.sections[k].done).length;
+  doc.text(`Sections complétées : ${done}/${ORDRE.length}`, M, y); y+=10;
+  doc.setFont('helvetica','bold'); doc.setTextColor(40,40,40);
+  doc.text('Rédactions', M, y); y+=6;
+  doc.setFont('helvetica','normal');
+  const addPage=(h)=>{ if(y+h>285){ doc.addPage(); y=M; } };
+  ORDRE.forEach((k,idx)=>{
+    addPage(10);
+    doc.setFont('helvetica','bold'); doc.setTextColor(95,111,82);
+    doc.text(`${idx+1}. ${NOMS[k]} ${etat.sections[k].done?'(OK)':'(en cours)'}`, M, y); y+=6;
+    doc.setFont('helvetica','normal'); doc.setTextColor(40,40,40);
+    const d=etat.sections[k].details;
+    const txt=(d && d.redac && d.redac.texte) ? d.redac.texte : '(rédaction non enregistrée)';
+    const lines=doc.splitTextToSize(txt, W-2*M);
+    lines.forEach(line=>{ addPage(6); doc.text(line, M, y); y+=5; });
+    y+=6;
+  });
+  doc.save(`Temps_indicatif_AULA_CALM_${prenom}_${nom}.pdf`.replace(/\s+/g,'_'));
+}
+
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
